@@ -1,0 +1,114 @@
+---
+- name: "Install docker in the build server"
+  gather_facts: false
+  hosts: build_server
+  become: true
+  tasks:
+    - name: "Install packages"
+      yum:
+        name: ['python-pip', 'yum-utils', 'lvm2', 'amazon-linux-extras', 'git']
+        state: present
+            
+    - name: "Install docker-py/docker using pip"
+      pip:
+        name: docker
+        state: present
+      
+        
+    - name: "Install docker-ce"
+      shell: "amazon-linux-extras install docker -y"
+        
+    - name: "Start and enable docker"
+      service:
+        name: docker
+        state: started
+        enabled: yes
+        
+    - name: "Download the repository from github"
+      git:
+        repo: 'https://github.com/Anoopg-K/project1.git'
+        dest: ./newproject1/
+      register: git_var
+        
+    - name: "debug git variable"
+      debug:
+        var: git_var
+
+    - name: "Remove existing images if any"
+      when: git_var.changed == true
+      docker_image:
+        name: produc_image1
+        force_absent: yes
+        state: absent
+    
+    
+    - name: "building docker image"
+      when: git_var.changed == true
+      docker_image:
+        name: produc_image1:{{ git_var.after }}
+        path: /home/ec2-user/newproject1
+        force_source: yes
+        source: build
+      register: build_var
+        
+    
+    - name: "Login to docker hub"
+      docker_login:
+        email: anoopgnair89@gmail.com
+        username: anoopgnair89
+        password: ashachechi
+    
+    
+    - name: "Add latest tag and push to docker hub"
+      docker_image:
+        name: produc_image1:{{ git_var.after }}
+        repository: anoopgnair89/produc_image1:latest
+        force_tag: yes
+        push: yes
+        source: local
+
+
+- name: "Install docker in the production server"
+  gather_facts: false
+  hosts: production_server
+  become: yes
+  tasks:
+    - name: "Install packages"
+      yum:
+        name: ['python-pip', 'yum-utils', 'lvm2', 'amazon-linux-extras', 'git']
+        state: present
+            
+    - name: "Install docker-py/docker using pip"
+      pip:
+        name: docker
+        state: present
+      
+        
+    - name: "Install docker-ce"
+      shell: "amazon-linux-extras install docker -y"
+        
+    - name: "Start and enable docker"
+      service:
+        name: docker
+        state: started
+        enabled: yes
+            
+    - name: "Remove existing images if any"
+      docker_image:
+        name: anoopgnair89/produc_image1:latest
+        force_absent: yes
+        state: absent
+            
+    - name: "Pull docker image from docker hub"
+      docker_image:
+        name: anoopgnair89/produc_image1:latest
+        force_source: yes
+        source: pull
+        state: present
+            
+    - name: "Create a docker container"
+      docker_container:
+        name: ct1
+        image: anoopgnair89/produc_image1:latest
+        ports: "80:80"
+        ignore_image: no
