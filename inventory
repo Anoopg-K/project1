@@ -1,0 +1,10 @@
+[amazon]
+
+172.31.16.124 ansible_user=ec2-user ansible_port=22 ansible_ssh_private_key_file="ansible-key"
+
+[build_server]
+172.31.12.150 ansible_user=ec2-user ansible_port=22 ansible_ssh_private_key_file="ansible-key"
+
+[production_server]
+172.31.5.255 ansible_user=ec2-user ansible_port=22 ansible_ssh_private_key_file="ansible-key"
+
